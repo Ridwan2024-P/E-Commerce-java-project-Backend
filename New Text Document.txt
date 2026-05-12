@@ -1,0 +1,494 @@
+
+
+-- =========================================
+-- ENUM TYPES
+-- =========================================
+
+CREATE TYPE user_role AS ENUM (
+    'ADMIN',
+    'MANAGER',
+    'USER'
+);
+
+CREATE TYPE order_status AS ENUM (
+    'PENDING',
+    'CONFIRMED',
+    'PROCESSING',
+    'SHIPPED',
+    'DELIVERED',
+    'CANCELLED'
+);
+
+CREATE TYPE payment_status AS ENUM (
+    'UNPAID',
+    'PAID',
+    'FAILED'
+);
+
+CREATE TYPE payment_method AS ENUM (
+    'BKASH',
+    'NAGAD',
+    'ROCKET',
+    'CARD',
+    'COD'
+);
+
+-- =========================================
+-- USERS TABLE
+-- =========================================
+
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+
+    name VARCHAR(100) NOT NULL,
+
+    email VARCHAR(150) UNIQUE NOT NULL,
+
+    password VARCHAR(255) NOT NULL,
+
+    phone VARCHAR(20),
+
+    address TEXT,
+
+    role user_role DEFAULT 'USER',
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- CATEGORIES TABLE
+-- =========================================
+
+CREATE TABLE categories (
+    id BIGSERIAL PRIMARY KEY,
+
+    name VARCHAR(100) UNIQUE NOT NULL,
+
+    description TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- BRANDS TABLE
+-- =========================================
+
+CREATE TABLE brands (
+    id BIGSERIAL PRIMARY KEY,
+
+    name VARCHAR(100) UNIQUE NOT NULL,
+
+    description TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- PRODUCTS TABLE
+-- =========================================
+
+CREATE TABLE products (
+    id BIGSERIAL PRIMARY KEY,
+
+    name VARCHAR(200) NOT NULL,
+
+    slug VARCHAR(250) UNIQUE,
+
+    description TEXT,
+
+    short_description TEXT,
+
+    sku VARCHAR(100) UNIQUE,
+
+    price NUMERIC(10,2) NOT NULL,
+
+    discount_price NUMERIC(10,2),
+
+    stock INT DEFAULT 0,
+
+    thumbnail_image TEXT,
+
+    weight NUMERIC(8,2),
+
+    category_id BIGINT REFERENCES categories(id)
+    ON DELETE SET NULL,
+
+    brand_id BIGINT REFERENCES brands(id)
+    ON DELETE SET NULL,
+
+    is_featured BOOLEAN DEFAULT FALSE,
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- PRODUCT IMAGES
+-- =========================================
+
+CREATE TABLE product_images (
+    id BIGSERIAL PRIMARY KEY,
+
+    product_id BIGINT REFERENCES products(id)
+    ON DELETE CASCADE,
+
+    image_url TEXT NOT NULL
+);
+
+-- =========================================
+-- PRODUCT ATTRIBUTES
+-- =========================================
+
+CREATE TABLE product_attributes (
+    id BIGSERIAL PRIMARY KEY,
+
+    product_id BIGINT REFERENCES products(id)
+    ON DELETE CASCADE,
+
+    attribute_name VARCHAR(100),
+
+    attribute_value VARCHAR(100)
+);
+
+-- =========================================
+-- CART TABLE
+-- =========================================
+
+CREATE TABLE cart (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT UNIQUE REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- CART ITEMS TABLE
+-- =========================================
+
+CREATE TABLE cart_items (
+    id BIGSERIAL PRIMARY KEY,
+
+    cart_id BIGINT REFERENCES cart(id)
+    ON DELETE CASCADE,
+
+    product_id BIGINT REFERENCES products(id)
+    ON DELETE CASCADE,
+
+    quantity INT DEFAULT 1,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- ORDERS TABLE
+-- =========================================
+
+CREATE TABLE orders (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    total_amount NUMERIC(10,2) DEFAULT 0,
+
+    shipping_fee NUMERIC(10,2) DEFAULT 0,
+
+    discount_amount NUMERIC(10,2) DEFAULT 0,
+
+    final_amount NUMERIC(10,2) DEFAULT 0,
+
+    status order_status DEFAULT 'PENDING',
+
+    payment_status payment_status DEFAULT 'UNPAID',
+
+    shipping_address TEXT,
+
+    customer_phone VARCHAR(20),
+
+    notes TEXT,
+
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- ORDER ITEMS TABLE
+-- =========================================
+
+CREATE TABLE order_items (
+    id BIGSERIAL PRIMARY KEY,
+
+    order_id BIGINT REFERENCES orders(id)
+    ON DELETE CASCADE,
+
+    product_id BIGINT REFERENCES products(id)
+    ON DELETE CASCADE,
+
+    quantity INT NOT NULL,
+
+    unit_price NUMERIC(10,2) NOT NULL,
+
+    total_price NUMERIC(10,2) NOT NULL
+);
+
+-- =========================================
+-- PAYMENTS TABLE
+-- =========================================
+
+CREATE TABLE payments (
+    id BIGSERIAL PRIMARY KEY,
+
+    order_id BIGINT REFERENCES orders(id)
+    ON DELETE CASCADE,
+
+    payment_method payment_method,
+
+    transaction_id VARCHAR(150),
+
+    amount NUMERIC(10,2),
+
+    payment_status payment_status DEFAULT 'UNPAID',
+
+    paid_at TIMESTAMP,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- REVIEWS TABLE
+-- =========================================
+
+CREATE TABLE reviews (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    product_id BIGINT REFERENCES products(id)
+    ON DELETE CASCADE,
+
+    rating INT CHECK(rating >= 1 AND rating <= 5),
+
+    comment TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- WISHLIST TABLE
+-- =========================================
+
+CREATE TABLE wishlist (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    product_id BIGINT REFERENCES products(id)
+    ON DELETE CASCADE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- COUPONS TABLE
+-- =========================================
+
+CREATE TABLE coupons (
+    id BIGSERIAL PRIMARY KEY,
+
+    code VARCHAR(50) UNIQUE NOT NULL,
+
+    discount_percent INT,
+
+    max_discount NUMERIC(10,2),
+
+    min_order_amount NUMERIC(10,2),
+
+    expiry_date DATE,
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- ORDER COUPONS TABLE
+-- =========================================
+
+CREATE TABLE order_coupons (
+    id BIGSERIAL PRIMARY KEY,
+
+    order_id BIGINT REFERENCES orders(id)
+    ON DELETE CASCADE,
+
+    coupon_id BIGINT REFERENCES coupons(id)
+    ON DELETE CASCADE
+);
+
+-- =========================================
+-- SHIPPING TABLE
+-- =========================================
+
+CREATE TABLE shipping (
+    id BIGSERIAL PRIMARY KEY,
+
+    order_id BIGINT REFERENCES orders(id)
+    ON DELETE CASCADE,
+
+    courier_name VARCHAR(100),
+
+    tracking_number VARCHAR(100),
+
+    estimated_delivery DATE,
+
+    shipped_at TIMESTAMP,
+
+    delivered_at TIMESTAMP
+);
+
+-- =========================================
+-- NOTIFICATIONS TABLE
+-- =========================================
+
+CREATE TABLE notifications (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    title VARCHAR(200),
+
+    message TEXT,
+
+    is_read BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- ADDRESS TABLE
+-- =========================================
+
+CREATE TABLE addresses (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    full_name VARCHAR(100),
+
+    phone VARCHAR(20),
+
+    city VARCHAR(100),
+
+    area VARCHAR(100),
+
+    postal_code VARCHAR(20),
+
+    address_line TEXT,
+
+    is_default BOOLEAN DEFAULT FALSE
+);
+
+-- =========================================
+-- ADMIN ACCOUNT
+-- =========================================
+
+INSERT INTO users(
+    name,
+    email,
+    password,
+    role
+)
+VALUES(
+    'Admin',
+    'admin@gmail.com',
+    '$2a$10$encryptedpassword',
+    'ADMIN'
+);
+
+-- =========================================
+-- MANAGER ACCOUNT
+-- =========================================
+
+INSERT INTO users(
+    name,
+    email,
+    password,
+    role
+)
+VALUES(
+    'Manager',
+    'manager@gmail.com',
+    '$2a$10$encryptedpassword',
+    'MANAGER'
+);
+
+-- =========================================
+-- USER ACCOUNT
+-- =========================================
+
+INSERT INTO users(
+    name,
+    email,
+    password,
+    role
+)
+VALUES(
+    'User',
+    'user@gmail.com',
+    '$2a$10$encryptedpassword',
+    'USER'
+);
+
+-- =========================================
+-- SAMPLE CATEGORY
+-- =========================================
+
+INSERT INTO categories(name,description)
+VALUES(
+    'Electronics',
+    'Electronic products'
+);
+
+-- =========================================
+-- SAMPLE BRAND
+-- =========================================
+
+INSERT INTO brands(name,description)
+VALUES(
+    'Samsung',
+    'Samsung brand products'
+);
+
+-- =========================================
+-- SAMPLE PRODUCT
+-- =========================================
+
+INSERT INTO products(
+    name,
+    slug,
+    description,
+    short_description,
+    sku,
+    price,
+    stock,
+    category_id,
+    brand_id
+)
+VALUES(
+    'Samsung Galaxy S24',
+    'samsung-galaxy-s24',
+    'Latest Samsung smartphone',
+    'Samsung flagship phone',
+    'SGS24',
+    1200.00,
+    10,
+    1,
+    1
+);
